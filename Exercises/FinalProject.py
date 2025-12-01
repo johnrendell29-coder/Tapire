@@ -1,185 +1,204 @@
-import pandas as pd                # pandas → library for reading CSV files & data analysis
-from pathlib import Path           # Path → safer way to handle file paths
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import warnings
 
-# CONFIGURATION — File paths (location of input CSV and where the report will be saved)
-DATA_PATH = Path("Motor_Vehicle_Collisions_-_Crashes_20251130.csv")  
-REPORT_PATH = Path("report_2024_summary.csv")
 
-# Load CSV + Normalize column names
-def load_data(path: Path) -> pd.DataFrame:
-    """
-    Loads the CSV file using pandas and normalizes the column names.
-    Normalizing (making all names uppercase) makes column referencing easier
-    even if the CSV formatting changes slightly.
-    """
-    df = pd.read_csv(path, low_memory=False)   # low_memory avoids dtype warnings in large files
-    df.columns = [c.strip().upper() for c in df.columns]  # remove spaces + uppercase the headers
-    return df
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
-# Validate that important columns exist
-def ensure_columns(df: pd.DataFrame, required_cols: set):
-    """
-    Checks if all required columns are present in the loaded CSV.
-    If something is missing, the program stops with an error message.
-    """
-    missing = required_cols - set(df.columns)
-    if missing:
-        raise ValueError(f"Missing expected columns in CSV: {missing}")
 
-# Convert date + filter year 2024
-def parse_dates_and_filter_2024(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Converts the CRASH DATE column into an actual date format (datetime).
-    Then keeps ONLY the rows where the crash happened in 2024.
-    """
-    df['CRASH_DATE_DT'] = pd.to_datetime(
-        df['CRASH DATE'],      # column from CSV
-        format='%m/%d/%Y',     # US-style date format
-        errors='coerce'        # invalid dates become NaT instead of crashing the program
+CSV_URL = 'https://data.cityofnewyork.us/api/views/h9gi-nx95/rows.csv?accessType=DOWNLOAD' 
+
+OUTPUT_FILENAME = 'NYC_Collisions_Summary_Report_2024.csv'
+
+
+COL_DATE = 'CRASH DATE'
+COL_TIME = 'CRASH TIME'
+COL_INJURED = 'NUMBER OF PERSONS INJURED'
+COL_KILLED = 'NUMBER OF PERSONS KILLED'
+COL_STREET_ON = 'ON STREET NAME'
+COL_STREET_CROSS = 'CROSS STREET NAME'
+COL_BOROUGH = 'BOROUGH'
+
+
+VEHICLE_COLS = [
+    'VEHICLE TYPE CODE 1',
+    'VEHICLE TYPE CODE 2',
+    'VEHICLE TYPE CODE 3',
+    'VEHICLE TYPE CODE 4',
+]
+
+
+START_DATE = '2024-01-01'
+END_DATE = '2024-12-31'
+
+
+
+print(f"Loading data from: {CSV_URL} (full dataset for local filtering)...")
+try:
+   
+    df = pd.read_csv(
+        CSV_URL,
+        dtype={
+            COL_INJURED: float,
+            COL_KILLED: float,
+            COL_BOROUGH: 'category',
+        }
     )
 
-    # Keep only rows where the year is 2024
-    return df[df['CRASH_DATE_DT'].dt.year == 2024].copy()
+   
+    df['CRASH_DATE_TIME'] = pd.to_datetime(df[COL_DATE] + ' ' + df[COL_TIME])
+    df.set_index('CRASH_DATE_TIME', inplace=True)
+    
+    print(f"Full data loaded successfully. Total records: {len(df)}")
 
-# Compute statistics needed for the report
-def compute_statistics(df_2024: pd.DataFrame):
-    """
-    Calculates:
-    - Total crashes in 2024
-    - Total number of injured persons
-    - Total number of killed persons
-    - Top 10 streets with the most accidents
-    - Accident count per month
-    """
+   
+    print(f"Filtering data for the range: {START_DATE} to {END_DATE}...")
+    df_2024 = df.loc[START_DATE:END_DATE].copy()
+    
+    print(f"Analysis data ready. 2024 records: {len(df_2024)}")
 
-    # Count total number of crash records
-    total_accidents = len(df_2024)
+except Exception as e:
+    print(f"Error loading or processing data: {e}")
+    print("The online compiler may be timing out due to the large file size of the full dataset.")
+    exit()
 
-    # Find columns containing "INJURED" and "KILLED"
-    # (CSV files sometimes rename these)
-    injured_col = None
-    killed_col = None
-    for col in df_2024.columns:
-        if "INJURED" in col:
-            injured_col = col
-        if "KILLED" in col:
-            killed_col = col
 
-    # Stop if columns are missing
-    if injured_col is None or killed_col is None:
-        raise ValueError("Could not detect INJURED or KILLED columns in CSV.")
+if df_2024.empty:
+    print("No data was found for 2024. The source may not contain current 2024 data yet.")
+    exit()
+    
 
-    # Sum the values (replace blanks with 0)
-    total_injured = df_2024[injured_col].fillna(0).astype(float).sum()
-    total_killed  = df_2024[killed_col].fillna(0).astype(float).sum()
+total_crashes_2024 = len(df_2024)
+total_injured = df_2024[COL_INJURED].sum()
+total_killed = df_2024[COL_KILLED].sum()
 
-    # Count accidents per street name
-    top_streets = (
-        df_2024['ON STREET NAME']
-        .fillna("UNKNOWN")         # safety: replace empty street names
-        .str.strip()               # remove spaces
-        .value_counts()            # count how many times each street appears
-        .reset_index()             # convert from Series → DataFrame
-        .rename(columns={'index':'street', 'ON STREET NAME':'accident_count'})
-    )
 
-    # Remove rows where street name is blank
-    top_streets = top_streets[top_streets['street'] != ""]
-    top_10_streets = top_streets.head(10)  # pick only the top 10
+street_columns = [COL_STREET_ON, COL_STREET_CROSS]
+street_counts = pd.concat([df_2024[col].dropna() for col in street_columns]).value_counts()
+top_streets = street_counts.head(5)
 
-    # Extract month name from the CRASH DATE
-    df_2024['CRASH_MONTH'] = df_2024['CRASH_DATE_DT'].dt.month_name()
 
-    # Count accidents per month
-    month_counts = (
-        df_2024['CRASH_MONTH']
-        .value_counts()
-        .reset_index()
-        .rename(columns={'index':'month', 'CRASH_MONTH':'accidents'})
-    )
+df_2024['MONTH'] = df_2024.index.month
+monthly_accidents = df_2024['MONTH'].value_counts().sort_index()
+peak_month_number = monthly_accidents.idxmax()
+peak_month_name = pd.to_datetime(peak_month_number, format='%m').strftime('%B')
+peak_month_count = monthly_accidents.max()
 
-    # The month with the highest number of accidents
-    top_month_row = month_counts.iloc[0] if not month_counts.empty else None
 
-    # Return all results in dictionary form
-    return {
-        "total_accidents": int(total_accidents),
-        "total_injured": int(total_injured),
-        "total_killed": int(total_killed),
-        "top_10_streets": top_10_streets,
-        "month_counts": month_counts,
-        "top_month_row": top_month_row
+vehicle_counts = pd.concat([df_2024[col].dropna() for col in VEHICLE_COLS]).value_counts()
+most_common_vehicle = vehicle_counts.index[0]
+most_common_vehicle_count = vehicle_counts.iloc[0]
+
+
+
+def display_analysis_menu():
+    """Presents an interactive menu to the user to choose which analysis to display."""
+    
+    analysis_data = {
+        '1': ("Total Collisions", f"Total: {total_crashes_2024}"),
+        '2': ("Total Injured", f"Total: {int(total_injured)} persons"),
+        '3': ("Total Killed", f"Total: {int(total_killed)} persons"),
+        '4': ("Peak Accident Month", f"{peak_month_name} with {peak_month_count} accidents"),
+        '5': ("Top 5 Accident Streets", "\n" + "\n".join([f"   - {street} ({count})" for street, count in top_streets.items()])),
+        '6': ("Most Common Vehicle Type", f"'{most_common_vehicle}' (Involved in {most_common_vehicle_count} incidents)"),
+        '7': ("Show All (1-6)", "All results below."),
+        '8': ("Show Monthly Trend Plot", "Generating plot..."),
+        '9': ("Export Summary CSV", "Exporting report..."),
+        '0': ("Exit", "Exiting program.")
     }
+    
+    while True:
+        print("\n" + "="*45)
+        print("NYC Collision Analysis Menu - Choose Data to View")
+        print("="*45)
+        
+      
+        for key, (name, value) in analysis_data.items():
+            if key not in ['5', '7', '8', '9', '0']:
+                print(f"  [{key}] {name}: {value}")
+            elif key == '5':
+                print(f"  [{key}] {name}: Top is '{top_streets.index[0]}' ({top_streets.iloc[0]})")
+            else:
+                 print(f"  [{key}] {name}")
 
-# Save the report into a CSV file
-def write_report(report_path: Path, stats: dict):
-    """
-    Takes the computed statistics and writes them into a CSV file.
-    The CSV is structured with sections (summary, top streets, monthly breakdown).
-    """
-    rows = []
+        choice = input("\nEnter your choice (e.g., 2, 6, 8, 0): ").strip()
+        
+        if choice == '0':
+            print(analysis_data['0'][1])
+            break
+        
+        elif choice == '7':
+            print("\n--- Displaying All Core Results ---")
+            for key in ['1', '2', '3', '4', '6']:
+                name, value = analysis_data[key]
+                print(f"  - {name}: {value}")
+            print(f"  - {analysis_data['5'][0]}: {analysis_data['5'][1]}")
+            print("---------------------------------")
+            
+        elif choice == '8':
+            try:
+                print(analysis_data['8'][1])
+             
+                plt.figure(figsize=(10, 6))
+                
+                plot_data = monthly_accidents.copy()
+                plot_data.index = plot_data.index.map(lambda x: pd.to_datetime(x, format='%m').strftime('%B'))
+                
+                plot_data.plot(kind='line', marker='o', color='skyblue')
 
-    # --- Summary Section ---
-    rows.append({"section":"SUMMARY", "metric":"total_accidents",       "value": stats["total_accidents"]})
-    rows.append({"section":"SUMMARY", "metric":"total_persons_injured", "value": stats["total_injured"]})
-    rows.append({"section":"SUMMARY", "metric":"total_persons_killed",  "value": stats["total_killed"]})
-    rows.append({})  # Blank line for separation
+                plt.title('Monthly Trend of Motor Vehicle Collisions in NYC (2024)')
+                plt.xlabel('Month')
+                plt.ylabel('Number of Accidents')
+                plt.grid(axis='y', linestyle='--', alpha=0.7)
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                plt.show()
+             
+            except Exception as e:
+                print("Could not generate or display plots (Check your environment's display settings).")
 
-    # --- Top Streets Section ---
-    rows.append({"section":"TOP_STREETS", "metric":"rank", "value":"street|accident_count"})
-    for i, r in stats["top_10_streets"].reset_index(drop=True).iterrows():
-        rows.append({
-            "section": "TOP_STREETS",
-            "metric": i + 1,  # Ranking number
-            "value": f"{r['street']}|{int(r['accident_count'])}"
-        })
-    rows.append({})
+        elif choice == '9':
+          
+            print(analysis_data['9'][1])
+            
+            report_data = {
+                'Metric': [
+                    'Total Collisions (2024)', 
+                    'Total Persons Injured (2024)', 
+                    'Total Persons Killed (2024)', 
+                    'Month with Most Accidents',
+                    'Most Common Vehicle Type'
+                ],
+                'Value': [
+                    total_crashes_2024, 
+                    int(total_injured), 
+                    int(total_killed), 
+                    f'{peak_month_name} ({peak_month_count} accidents)',
+                    f'{most_common_vehicle} ({most_common_vehicle_count} incidents)'
+                ]
+            }
+            for i, (street, count) in enumerate(top_streets.items()):
+                report_data['Metric'].append(f'Top {i+1} Accident Street')
+                report_data['Value'].append(f'{street} ({count} accidents)')
 
-    # --- Monthly Breakdown Section ---
-    rows.append({"section":"MONTH_COUNTS", "metric":"month", "value":"accidents"})
-    for _, r in stats["month_counts"].iterrows():
-        rows.append({
-            "section": "MONTH_COUNTS",
-            "metric": r['month'],          # e.g., January, February
-            "value": int(r['accidents'])   # number of accidents
-        })
+            summary_report_df = pd.DataFrame(report_data)
+            summary_report_df.to_csv(OUTPUT_FILENAME, index=False)
+            print(f"Report export complete to {OUTPUT_FILENAME}.")
+          
+            
+        elif choice in analysis_data:
+            name, value = analysis_data[choice]
+            print(f"\n--- Result for {name} ---")
+            print(value)
+            print("--------------------------")
+            
+        else:
+            print("\nInvalid choice. Please enter a number from the menu.")
 
-    # Convert list → DataFrame → write CSV
-    report_df = pd.DataFrame(rows)
-    report_df.to_csv(report_path, index=False)
 
-    print(f"Report written to {report_path}")
-
-# Main Program Flow
-def main():
-    print("Loading data...")
-    df = load_data(DATA_PATH)     # Reads the CSV
-
-    ensure_columns(df, {"CRASH DATE"})   # Make sure the important column exists
-
-    print("Filtering for 2024 records...")
-    df_2024 = parse_dates_and_filter_2024(df)
-    print(f"Records in 2024: {len(df_2024)}")
-
-    print("Computing statistics...")
-    stats = compute_statistics(df_2024)
-
-    # Print the month with most accidents
-    if stats["top_month_row"] is not None:
-        print(
-            "Top month:",
-            stats["top_month_row"]["month"],
-            "with",
-            int(stats["top_month_row"]["accidents"]),
-            "accidents"
-        )
-
-    print("Writing report...")
-    write_report(REPORT_PATH, stats)
-    print("Done! Open the CSV report to view results.")
-
-# Only run main() when this file is executed directly
-if __name__ == "__main__":
-    main()
+display_analysis_menu()
 
 
