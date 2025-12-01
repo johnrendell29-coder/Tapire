@@ -3,16 +3,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import warnings
-
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-
-CSV_URL = 'https://data.cityofnewyork.us/api/views/h9gi-nx95/rows.csv?accessType=DOWNLOAD' 
-
+CSV_URL = 'https://data.cityofnewyork.us/api/views/h9gi-nx95/rows.csv?accessType=DOWNLOAD'
 OUTPUT_FILENAME = 'NYC_Collisions_Summary_Report_2024.csv'
-
 
 COL_DATE = 'CRASH DATE'
 COL_TIME = 'CRASH TIME'
@@ -22,7 +20,6 @@ COL_STREET_ON = 'ON STREET NAME'
 COL_STREET_CROSS = 'CROSS STREET NAME'
 COL_BOROUGH = 'BOROUGH'
 
-
 VEHICLE_COLS = [
     'VEHICLE TYPE CODE 1',
     'VEHICLE TYPE CODE 2',
@@ -30,175 +27,221 @@ VEHICLE_COLS = [
     'VEHICLE TYPE CODE 4',
 ]
 
-
 START_DATE = '2024-01-01'
 END_DATE = '2024-12-31'
 
 
+# ------- CHUNKED CSV LOADER (PREVENTS MEMORY CRASHES) ---------
 
-print(f"Loading data from: {CSV_URL} (full dataset for local filtering)...")
-try:
-   
-    df = pd.read_csv(
-        CSV_URL,
-        dtype={
-            COL_INJURED: float,
-            COL_KILLED: float,
-            COL_BOROUGH: 'category',
-        }
-    )
+def load_csv_in_chunks(url, chunksize=100_000):
+    """
+    Loads the CSV in chunks so huge datasets won't crash VS Code or your RAM.
+    Only rows within 2024 are kept.
+    """
+    print("Loading dataset in chunks... Please wait.")
+    chunk_list = []
 
-   
-    df['CRASH_DATE_TIME'] = pd.to_datetime(df[COL_DATE] + ' ' + df[COL_TIME])
-    df.set_index('CRASH_DATE_TIME', inplace=True)
-    
-    print(f"Full data loaded successfully. Total records: {len(df)}")
+    try:
+        for chunk in pd.read_csv(
+            url,
+            chunksize=chunksize,
+            dtype={
+                COL_INJURED: float,
+                COL_KILLED: float,
+                COL_BOROUGH: 'category'
+            }
+        ):
+            # Combine date + time safely
+            chunk['CRASH_DATE_TIME'] = pd.to_datetime(
+                chunk[COL_DATE] + ' ' + chunk[COL_TIME],
+                errors='coerce'
+            )
 
-   
-    print(f"Filtering data for the range: {START_DATE} to {END_DATE}...")
-    df_2024 = df.loc[START_DATE:END_DATE].copy()
-    
-    print(f"Analysis data ready. 2024 records: {len(df_2024)}")
+            # Keep only 2024 rows
+            filtered = chunk[
+                (chunk['CRASH_DATE_TIME'] >= START_DATE) &
+                (chunk['CRASH_DATE_TIME'] <= END_DATE)
+            ]
 
-except Exception as e:
-    print(f"Error loading or processing data: {e}")
-    print("The online compiler may be timing out due to the large file size of the full dataset.")
+            if not filtered.empty:
+                chunk_list.append(filtered)
+
+        if not chunk_list:
+            return pd.DataFrame()
+
+        return pd.concat(chunk_list)
+
+    except Exception as e:
+        print("Chunk loading failed:", e)
+        return None
+
+
+# ------------- LOAD DATA USING CHUNKED METHOD ---------------
+
+df_2024 = load_csv_in_chunks(CSV_URL)
+
+if df_2024 is None:
+    print("Failed to load data.")
     exit()
-
 
 if df_2024.empty:
-    print("No data was found for 2024. The source may not contain current 2024 data yet.")
+    print("No data found for 2024.")
     exit()
-    
+
+df_2024.set_index('CRASH_DATE_TIME', inplace=True)
+
+
+# -------------- ORIGINAL ANALYSIS (UNCHANGED) -----------------
 
 total_crashes_2024 = len(df_2024)
 total_injured = df_2024[COL_INJURED].sum()
 total_killed = df_2024[COL_KILLED].sum()
 
-
 street_columns = [COL_STREET_ON, COL_STREET_CROSS]
 street_counts = pd.concat([df_2024[col].dropna() for col in street_columns]).value_counts()
 top_streets = street_counts.head(5)
 
-
 df_2024['MONTH'] = df_2024.index.month
 monthly_accidents = df_2024['MONTH'].value_counts().sort_index()
+
 peak_month_number = monthly_accidents.idxmax()
 peak_month_name = pd.to_datetime(peak_month_number, format='%m').strftime('%B')
 peak_month_count = monthly_accidents.max()
-
 
 vehicle_counts = pd.concat([df_2024[col].dropna() for col in VEHICLE_COLS]).value_counts()
 most_common_vehicle = vehicle_counts.index[0]
 most_common_vehicle_count = vehicle_counts.iloc[0]
 
 
+# ------------------ TKINTER GUI FUNCTIONS -------------------
 
-def display_analysis_menu():
-    """Presents an interactive menu to the user to choose which analysis to display."""
-    
-    analysis_data = {
-        '1': ("Total Collisions", f"Total: {total_crashes_2024}"),
-        '2': ("Total Injured", f"Total: {int(total_injured)} persons"),
-        '3': ("Total Killed", f"Total: {int(total_killed)} persons"),
-        '4': ("Peak Accident Month", f"{peak_month_name} with {peak_month_count} accidents"),
-        '5': ("Top 5 Accident Streets", "\n" + "\n".join([f"   - {street} ({count})" for street, count in top_streets.items()])),
-        '6': ("Most Common Vehicle Type", f"'{most_common_vehicle}' (Involved in {most_common_vehicle_count} incidents)"),
-        '7': ("Show All (1-6)", "All results below."),
-        '8': ("Show Monthly Trend Plot", "Generating plot..."),
-        '9': ("Export Summary CSV", "Exporting report..."),
-        '0': ("Exit", "Exiting program.")
+def gui_display(text):
+    output_box.config(state="normal")
+    output_box.insert(tk.END, text + "\n")
+    output_box.see(tk.END)
+    output_box.config(state="disabled")
+
+
+def show_total_crashes():
+    gui_display(f"Total Collisions (2024): {total_crashes_2024}")
+
+
+def show_total_injured():
+    gui_display(f"Total Persons Injured (2024): {int(total_injured)}")
+
+
+def show_total_killed():
+    gui_display(f"Total Persons Killed (2024): {int(total_killed)}")
+
+
+def show_peak_month():
+    gui_display(f"Peak Accident Month: {peak_month_name} ({peak_month_count} accidents)")
+
+
+def show_top_streets():
+    gui_display("Top 5 Accident Streets:")
+    for street, count in top_streets.items():
+        gui_display(f"   - {street} ({count})")
+
+
+def show_common_vehicle():
+    gui_display(
+        f"Most Common Vehicle Type: '{most_common_vehicle}' ({most_common_vehicle_count} incidents)"
+    )
+
+
+def show_all():
+    gui_display("----- ALL RESULTS -----")
+    show_total_crashes()
+    show_total_injured()
+    show_total_killed()
+    show_peak_month()
+    show_common_vehicle()
+    show_top_streets()
+    gui_display("-------------------------")
+
+
+def show_plot():
+    try:
+        plot_data = monthly_accidents.copy()
+        plot_data.index = plot_data.index.map(
+            lambda x: pd.to_datetime(x, format='%m').strftime('%B')
+        )
+
+        plt.figure(figsize=(10, 6))
+        plot_data.plot(kind='line', marker='o', color='skyblue')
+
+        plt.title('Monthly Trend of Motor Vehicle Collisions in NYC (2024)')
+        plt.xlabel('Month')
+        plt.ylabel('Number of Accidents')
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+    except Exception:
+        messagebox.showerror("Error", "Could not generate plot.")
+
+
+def export_csv():
+    report_data = {
+        'Metric': [
+            'Total Collisions (2024)',
+            'Total Persons Injured (2024)',
+            'Total Persons Killed (2024)',
+            'Month with Most Accidents',
+            'Most Common Vehicle Type'
+        ],
+        'Value': [
+            total_crashes_2024,
+            int(total_injured),
+            int(total_killed),
+            f'{peak_month_name} ({peak_month_count} accidents)',
+            f'{most_common_vehicle} ({most_common_vehicle_count} incidents)'
+        ]
     }
-    
-    while True:
-        print("\n" + "="*45)
-        print("NYC Collision Analysis Menu - Choose Data to View")
-        print("="*45)
-        
-      
-        for key, (name, value) in analysis_data.items():
-            if key not in ['5', '7', '8', '9', '0']:
-                print(f"  [{key}] {name}: {value}")
-            elif key == '5':
-                print(f"  [{key}] {name}: Top is '{top_streets.index[0]}' ({top_streets.iloc[0]})")
-            else:
-                 print(f"  [{key}] {name}")
 
-        choice = input("\nEnter your choice (e.g., 2, 6, 8, 0): ").strip()
-        
-        if choice == '0':
-            print(analysis_data['0'][1])
-            break
-        
-        elif choice == '7':
-            print("\n--- Displaying All Core Results ---")
-            for key in ['1', '2', '3', '4', '6']:
-                name, value = analysis_data[key]
-                print(f"  - {name}: {value}")
-            print(f"  - {analysis_data['5'][0]}: {analysis_data['5'][1]}")
-            print("---------------------------------")
-            
-        elif choice == '8':
-            try:
-                print(analysis_data['8'][1])
-             
-                plt.figure(figsize=(10, 6))
-                
-                plot_data = monthly_accidents.copy()
-                plot_data.index = plot_data.index.map(lambda x: pd.to_datetime(x, format='%m').strftime('%B'))
-                
-                plot_data.plot(kind='line', marker='o', color='skyblue')
+    for i, (street, count) in enumerate(top_streets.items()):
+        report_data['Metric'].append(f'Top {i+1} Accident Street')
+        report_data['Value'].append(f'{street} ({count} accidents)')
 
-                plt.title('Monthly Trend of Motor Vehicle Collisions in NYC (2024)')
-                plt.xlabel('Month')
-                plt.ylabel('Number of Accidents')
-                plt.grid(axis='y', linestyle='--', alpha=0.7)
-                plt.xticks(rotation=45)
-                plt.tight_layout()
-                plt.show()
-             
-            except Exception as e:
-                print("Could not generate or display plots (Check your environment's display settings).")
-
-        elif choice == '9':
-          
-            print(analysis_data['9'][1])
-            
-            report_data = {
-                'Metric': [
-                    'Total Collisions (2024)', 
-                    'Total Persons Injured (2024)', 
-                    'Total Persons Killed (2024)', 
-                    'Month with Most Accidents',
-                    'Most Common Vehicle Type'
-                ],
-                'Value': [
-                    total_crashes_2024, 
-                    int(total_injured), 
-                    int(total_killed), 
-                    f'{peak_month_name} ({peak_month_count} accidents)',
-                    f'{most_common_vehicle} ({most_common_vehicle_count} incidents)'
-                ]
-            }
-            for i, (street, count) in enumerate(top_streets.items()):
-                report_data['Metric'].append(f'Top {i+1} Accident Street')
-                report_data['Value'].append(f'{street} ({count} accidents)')
-
-            summary_report_df = pd.DataFrame(report_data)
-            summary_report_df.to_csv(OUTPUT_FILENAME, index=False)
-            print(f"Report export complete to {OUTPUT_FILENAME}.")
-          
-            
-        elif choice in analysis_data:
-            name, value = analysis_data[choice]
-            print(f"\n--- Result for {name} ---")
-            print(value)
-            print("--------------------------")
-            
-        else:
-            print("\nInvalid choice. Please enter a number from the menu.")
+    pd.DataFrame(report_data).to_csv(OUTPUT_FILENAME, index=False)
+    messagebox.showinfo("Success", f"Report exported to {OUTPUT_FILENAME}")
 
 
-display_analysis_menu()
+# -------------------- TKINTER WINDOW ------------------------
+
+root = tk.Tk()
+root.title("NYC Collision Data Analyzer")
+root.geometry("750x600")
+
+title_label = ttk.Label(root, text="NYC Collision Analysis (2024)", font=("Arial", 16, "bold"))
+title_label.pack(pady=10)
+
+btn_frame = ttk.Frame(root)
+btn_frame.pack(pady=10)
+
+buttons = [
+    ("Total Collisions", show_total_crashes),
+    ("Total Injured", show_total_injured),
+    ("Total Killed", show_total_killed),
+    ("Peak Accident Month", show_peak_month),
+    ("Top 5 Streets", show_top_streets),
+    ("Most Common Vehicle", show_common_vehicle),
+    ("Show All", show_all),
+    ("Show Monthly Trend Plot", show_plot),
+    ("Export Summary CSV", export_csv),
+]
+
+for text, cmd in buttons:
+    ttk.Button(btn_frame, text=text, command=cmd).pack(fill="x", pady=3)
+
+output_box = scrolledtext.ScrolledText(root, height=15, state="disabled", wrap="word")
+output_box.pack(fill="both", expand=True, padx=10, pady=10)
+
+root.mainloop()
+
+
+
 
 
