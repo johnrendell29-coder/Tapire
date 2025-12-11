@@ -1,43 +1,29 @@
 class User:
-    def __init__(self, first_name, last_name, age, email, location):
+    def __init__(self, first_name, last_name):
         self.first_name = first_name
-        self.last_name  = last_name
-        self.age        = age
-        self.email      = email
-        self.location   = location
-        self.login_attempts = 0   # NEW ATTRIBUTE
+        self.last_name = last_name
+        self.login_attempts = 0   # starts at 0
 
-    def describe_user(self):
-        print(f"\nUser Profile:")
-        print(f" Name: {self.first_name} {self.last_name}")
-        print(f" Age: {self.age}")
-        print(f" Email: {self.email}")
-        print(f" Location: {self.location}")
-        print(f" Login Attempts: {self.login_attempts}")
-
-    def greet_user(self):
-        print(f"Hello, {self.first_name}! Welcome back.\n")
-
-    # --- NEW METHODS ---
+    # adds 1 to login_attempts
     def increment_login_attempts(self):
         self.login_attempts += 1
 
+    # resets to 0
     def reset_login_attempts(self):
         self.login_attempts = 0
 
 
-# --- TESTING THE NEW FEATURES ---
+# make a user
+user = User("Rendell", "Tapire")
 
-user_test = User("Ren", "Taps", 21, "ren@example.com", "Philippines")
+# increase attempts
+user.increment_login_attempts()
+user.increment_login_attempts()
+user.increment_login_attempts()
 
-# Simulate several login attempts
-user_test.increment_login_attempts()
-user_test.increment_login_attempts()
-user_test.increment_login_attempts()
+print("Login attempts:", user.login_attempts)
 
-print(f"Login attempts after increments: {user_test.login_attempts}")
+# reset
+user.reset_login_attempts()
+print("After reset:", user.login_attempts)
 
-# Reset attempts
-user_test.reset_login_attempts()
-
-print(f"Login attempts after reset: {user_test.login_attempts}")

@@ -1,40 +1,35 @@
-# This is the User class from Programming Exercise 2
+# User class represents a normal user
 class User:
     def __init__(self, first_name, last_name):
+        # Basic user information
         self.first_name = first_name
         self.last_name = last_name
-        self.login_attempts = 0  # default value
 
-    def increment_login_attempts(self):
-        self.login_attempts += 1
-
-    def reset_login_attempts(self):
-        self.login_attempts = 0
+    def describe_user(self):
+        print(f"User: {self.first_name} {self.last_name}")
 
 
-# Admin is a special kind of User → so we inherit from User
+# Admin class inherits from User (meaning Admin is a special type of User)
 class Admin(User):
     def __init__(self, first_name, last_name):
-        super().__init__(first_name, last_name)  
-        # super() lets Admin use User’s __init__
-
-        # list of privileges for admins
+        super().__init__(first_name, last_name)   # Call parent class constructor
+        # Admin has a list of privileges
         self.privileges = [
-            "can add post",
-            "can delete post",
-            "can ban user",
-            "can reset password"
+            "can add user",
+            "can delete user",
+            "can ban user"
         ]
 
-    # prints all privileges
+    # Method to show admin privileges
     def show_privileges(self):
         print("Admin privileges:")
         for privilege in self.privileges:
             print("-", privilege)
 
 
-# Create an admin user
-admin_user = Admin("Rendell", "Tapire")
+# Example usage
+admin = Admin("Ren", "Taps")
+admin.describe_user()
+admin.show_privileges()
 
-# Call the method
-admin_user.show_privileges()
+

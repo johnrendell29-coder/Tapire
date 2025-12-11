@@ -1,23 +1,25 @@
 class Restaurant:
+    # sets starting values
     def __init__(self, restaurant_name, cuisine_type):
         self.restaurant_name = restaurant_name
         self.cuisine_type = cuisine_type
 
+    # prints details
     def describe_restaurant(self):
-        print(f"Restaurant Name: {self.restaurant_name}")
-        print(f"Cuisine Type: {self.cuisine_type}")
+        print(f"{self.restaurant_name} serves {self.cuisine_type} food.")
 
+    # prints open message
     def open_restaurant(self):
         print(f"{self.restaurant_name} is now open!")
 
 
-# Make an instance
-restaurant = Restaurant("Special GOTO ni Rendell", "Filipino Cuisine")
+# make an object
+restaurant = Restaurant("Jollibee", "Fast Food")
 
-# Print the two attributes individually
 print(restaurant.restaurant_name)
 print(restaurant.cuisine_type)
 
-# Call both methods
 restaurant.describe_restaurant()
 restaurant.open_restaurant()
+
+

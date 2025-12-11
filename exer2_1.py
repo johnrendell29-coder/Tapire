@@ -1,29 +1,25 @@
 class User:
-    def __init__(self, first_name, last_name, age, email, location):
+    # sets initial values when creating a User
+    def __init__(self, first_name, last_name, age, email):
         self.first_name = first_name
-        self.last_name  = last_name
-        self.age        = age
-        self.email      = email
-        self.location   = location
+        self.last_name = last_name
+        self.age = age
+        self.email = email
 
+    # prints user information
     def describe_user(self):
-        print(f"\nUser Profile:")
-        print(f" Name: {self.first_name} {self.last_name}")
-        print(f" Age: {self.age}")
-        print(f" Email: {self.email}")
-        print(f" Location: {self.location}")
+        print(f"Name: {self.first_name} {self.last_name}")
+        print(f"Age: {self.age}")
+        print(f"Email: {self.email}")
 
+    # prints a simple greeting
     def greet_user(self):
-        print(f"Hello, {self.first_name}! Welcome back.\n")
+        print(f"Hello, {self.first_name}!")
 
 
-# --- Create several user instances ---
-
-user1 = User("Ren", "Tapire", 21, "ren@example.com", "Philippines")
-user2 = User("Alex", "Mine", 19, "alex@example.com", "Singapore")
-user3 = User("Mika", "Sato", 22, "mika@example.com", "Japan")
-
-# --- Call methods for each user ---
+# make some users
+user1 = User("Rendell", "Tapire", 20, "rendell@example.com")
+user2 = User("Llyod", "Frontera", 22, "Llyod@example.com")
 
 user1.describe_user()
 user1.greet_user()
@@ -31,5 +27,3 @@ user1.greet_user()
 user2.describe_user()
 user2.greet_user()
 
-user3.describe_user()
-user3.greet_user()
