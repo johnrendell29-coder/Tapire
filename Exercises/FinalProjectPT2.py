@@ -15,7 +15,6 @@ MONTH_ORDER = [
 ]
 
 # LOAD DATA
-
 df = pd.read_csv(CSV_FILE, low_memory=False)
 
 df["CRASH DATE"] = pd.to_datetime(df["CRASH DATE"], errors="coerce")
@@ -41,9 +40,6 @@ print("Total killed:", int(total_killed))
 df_2024["MONTH_NAME"] = df_2024["CRASH DATE"].dt.month_name()
 
 # USER INPUT
-# ==============================
-# USER INPUT
-# ==============================
 
 search_month = input("\nEnter month (e.g. October): ").strip().title()
 search_vehicle = input("Enter vehicle type (e.g. Sedan, SUV, Van, Truck): ").strip().upper()
@@ -52,12 +48,9 @@ if search_month not in MONTH_ORDER:
     print("Invalid month name.")
     exit()
 
-# Filter by selected month (THIS WAS MISSING)
+# Filter by selected month
 month_df = df_2024[df_2024["MONTH_NAME"] == search_month].copy()
 
-# ==============================
-# VEHICLE TYPE CODE 1 ONLY
-# ==============================
 
 print("\nDEBUG: Using VEHICLE TYPE CODE 1 ONLY")
 
@@ -70,7 +63,7 @@ vehicle_count = (
     .sum()
 )
 
-print(f"\n{search_vehicle} crashes (Vehicle Type Code 1 ONLY) in {search_month} 2024: {vehicle_count}")
+print(f"\n{search_vehicle} crashes in {search_month} 2024: {vehicle_count}")
 
 
 monthly_counts = (
@@ -88,6 +81,25 @@ plt.xticks(rotation=45)
 plt.grid(axis="y")
 plt.tight_layout()
 plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
