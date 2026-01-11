@@ -59,10 +59,12 @@ vehicle_count = (
     .dropna()
     .astype(str)
     .str.upper()
-    .str.strip()  
+    .str.replace(r"\s+", " ", regex=True)  
+    .str.strip()
     .eq(search_vehicle)
     .sum()
 )
+
 
 print(f"\n{search_vehicle} crashes in {search_month} 2024: {vehicle_count}")
 
