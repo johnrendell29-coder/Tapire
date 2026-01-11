@@ -59,6 +59,7 @@ vehicle_count = (
     .dropna()
     .astype(str)
     .str.upper()
+    .str.strip()  
     .eq(search_vehicle)
     .sum()
 )
