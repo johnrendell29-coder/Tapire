@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 CSV_FILE = "Motor_Vehicle_Collisions_-_Crashes_20251130.csv"
 
 START_DATE = "2024-01-01"
-END_DATE = "2024-12-31"
+END_DATE = "2025-1-1"
 
 MONTH_ORDER = [
     "January", "February", "March", "April",
@@ -21,8 +21,9 @@ df["CRASH DATE"] = pd.to_datetime(df["CRASH DATE"], errors="coerce")
 
 df_2024 = df[
     (df["CRASH DATE"] >= START_DATE) &
-    (df["CRASH DATE"] <= END_DATE)
+    (df["CRASH DATE"] < END_DATE)
 ].copy()
+
 
 # OVERALL STATISTICS
 
