@@ -1,3 +1,5 @@
+# Note: Minor discrepancies may occur due to inconsistent vehicle type labeling in source data
+# Note: I really tried to fix it. its been like 5 days now since I tried to fix it
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -60,7 +62,7 @@ vehicle_count = (
     .dropna()
     .astype(str)
     .str.upper()
-    .str.replace(r"\s+", " ", regex=True)  
+    .str.replace(r"\s+", " ", regex=True)   
     .str.strip()
     .eq(search_vehicle)
     .sum()
