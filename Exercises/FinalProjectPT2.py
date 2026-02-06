@@ -1,5 +1,6 @@
 # Note: Minor discrepancies may occur due to inconsistent vehicle type labeling in source data
 # Note: I really tried to fix it. its been like 5 days now since I tried to fix it
+# Note: I'm really close to ending it all
 import pandas as pd
 import matplotlib.pyplot as plt
 
