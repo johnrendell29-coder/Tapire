@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VoltTrack</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo">⚡ VoltTrack</div>
+
+        <nav class="sidebar-nav">
+            <a href="/dashboard">📊 Dashboard</a>
+            <a href="/equipment">📦 Equipment</a>
+            <a href="/logout" class="logout-link">🚪 Logout</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            VoltTrack Inventory System<br>
+            <span>CPE Laboratory</span>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+    {% block content %}{% endblock %}
+
+    <footer class="footer">
+        © 2026 VoltTrack Inventory System | Computer Engineering Laboratory
+    </footer>
+
+</main>
+</div>
+
+</body>
+</html>

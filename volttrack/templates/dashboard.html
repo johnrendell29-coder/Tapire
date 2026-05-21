@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="dashboard-hero">
+    <div>
+        <h1>VoltTrack Dashboard</h1>
+        <p>Monitor CPE laboratory equipment, availability, and borrowing activity.</p>
+    </div>
+
+    <a href="/equipment" class="btn-primary">Manage Equipment</a>
+</section>
+
+<section class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-icon">📦</span>
+        <h3>Total Equipment Types</h3>
+        <p>{{ total_equipment }}</p>
+    </div>
+
+    <div class="stat-card">
+        <span class="stat-icon">✅</span>
+        <h3>Available Items</h3>
+        <p>{{ available_equipment }}</p>
+    </div>
+
+    <div class="stat-card">
+        <span class="stat-icon">📤</span>
+        <h3>Borrowed Items</h3>
+        <p>{{ borrowed_equipment }}</p>
+    </div>
+
+    <div class="stat-card">
+        <span class="stat-icon">⚠️</span>
+        <h3>Damaged Items</h3>
+        <p>{{ damaged_equipment }}</p>
+    </div>
+</section>
+
+<section class="grid">
+    <div class="card">
+        <h3>Inventory Monitoring</h3>
+        <p>Track equipment quantity, availability, and current condition.</p>
+    </div>
+
+    <div class="card">
+        <h3>Borrowing Records</h3>
+        <p>Record equipment borrowed by users and monitor returned items.</p>
+    </div>
+
+    <div class="card">
+        <h3>Equipment Identification</h3>
+        <p>Use equipment images to help users recognize tools and devices quickly.</p>
+    </div>
+</section>
+
+{% endblock %}

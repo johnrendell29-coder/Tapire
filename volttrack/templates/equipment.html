@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Equipment Management</h1>
+
+<div class="card">
+    <div class="section-header">
+        <div>
+            <h2>Add Equipment</h2>
+            <p>Register new CPE laboratory equipment into the inventory.</p>
+        </div>
+    </div>
+
+    <form method="POST" action="/add_equipment" enctype="multipart/form-data" class="equipment-form">
+        <div class="form-grid">
+            <div>
+                <label>Equipment Name</label>
+                <input type="text" name="name" placeholder="e.g. Breadboard" required>
+            </div>
+
+            <div>
+                <label>Category</label>
+                <input type="text" name="category" placeholder="e.g. Electronics, Trainer" required>
+            </div>
+
+            <div>
+                <label>Quantity</label>
+                <input type="number" name="quantity" placeholder="e.g. 48" required>
+            </div>
+
+            <div>
+                <label>Remarks</label>
+                <input type="text" name="remarks" placeholder="ok, missing, damaged">
+            </div>
+
+            <div>
+                <label>Equipment Image</label>
+                <input type="file" name="image" accept="image/*">
+            </div>
+        </div>
+
+        <button type="submit" class="btn-primary">Add Equipment</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Equipment List</h2>
+
+    <form method="GET" action="/equipment" class="search-form">
+        <input type="text" name="search" placeholder="Search equipment..." value="{{ search }}">
+        <button type="submit">Search</button>
+        <a class="button secondary" href="/equipment">Clear</a>
+    </form>
+
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Total</th>
+                <th>Available</th>
+                <th>Remarks</th>
+                <th>Action</th>
+            </tr>
+
+            {% for item in items %}
+            <tr>
+                <td>{{ item[0] }}</td>
+
+                <td>
+                    {% if item[6] %}
+                        <img src="{{ url_for('static', filename='uploads/' + item[6]) }}" class="equipment-img">
+                    {% else %}
+                        <span class="no-image">No Image</span>
+                    {% endif %}
+                </td>
+
+                <td>{{ item[1] }}</td>
+                <td>{{ item[2] }}</td>
+                <td>{{ item[3] }}</td>
+                <td>{{ item[4] }}</td>
+
+                <td>
+                    {% if item[5]|lower == "ok" %}
+                        <span class="badge badge-ok">OK</span>
+                    {% elif item[5]|lower == "missing" %}
+                        <span class="badge badge-missing">Missing</span>
+                    {% elif item[5]|lower == "damaged" %}
+                        <span class="badge badge-damaged">Damaged</span>
+                    {% else %}
+                        <span class="badge">{{ item[5] }}</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if item[4] > 0 %}
+                    <form method="POST" action="/borrow/{{ item[0] }}" class="borrow-form">
+                    <input
+                    type="number"
+                    name="borrow_quantity"
+                    min="1"
+                    max="{{ item[4] }}"
+                    value="1"
+                    required
+                >
+                <button type="submit" class="button">Borrow</button>
+            </form>
+        {% else %}
+            Not Available
+        {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Borrowed Equipment</h2>
+
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th>Record ID</th>
+                <th>Borrower</th>
+                <th>Equipment</th>
+                <th>Quantity</th>
+                <th>Date Borrowed</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+
+            {% for record in records %}
+            <tr>
+                <td>{{ record[0] }}</td>
+                <td>{{ record[1] }}</td>
+                <td>{{ record[2] }}</td>
+                <td>{{ record[3] }}</td>
+                <td>{{ record[4] }}</td>
+                <td>{{ record[5] }}</td>
+                <td>
+                    <a class="button" href="/return/{{ record[0] }}">Return</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+{% endblock %}
