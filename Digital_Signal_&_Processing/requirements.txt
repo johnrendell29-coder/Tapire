@@ -1,0 +1,6 @@
+numpy
+matplotlib
+opencv-python
+pytesseract
+ipykernel
+notebook
